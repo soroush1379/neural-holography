@@ -54,6 +54,7 @@ p.add_argument('--experiment', type=str, default='', help='Name of experiment')
 p.add_argument('--lr', type=float, default=8e-3, help='Learning rate for phase variables (for SGD)')
 p.add_argument('--lr_s', type=float, default=2e-3, help='Learning rate for learnable scale (for SGD)')
 p.add_argument('--num_iters', type=int, default=500, help='Number of iterations (GS, SGD)')
+p.add_argument('--input_beam_diameter_mm', type=float, default=9, help='Diameter of the input beam (mm)')
 
 # parse arguments
 opt = p.parse_args()
@@ -90,6 +91,21 @@ summaries_dir = os.path.join(root_path, 'summaries')
 utils.cond_mkdir(summaries_dir)
 writer = SummaryWriter(summaries_dir)
 
+# Input beam
+beam_diameter = opt.input_beam_diameter_mm * mm
+Lx = slm_res[1] * feature_size[1]
+Nx = slm_res[1]
+
+Ly = slm_res[0] * feature_size[0]
+Ny = slm_res[0]
+
+FX = torch.linspace(-Lx/2, Lx/2, Nx) 
+FY = torch.linspace(-Ly/2, Ly/2, Ny) 
+
+X, Y = torch.meshgrid(FX, FY, indexing = "xy")
+r2 = X**2 + Y**2
+input_amp = torch.exp(-r2 / (beam_diameter/2)**2).float().to('cuda')
+
 # Hardware setup for CITL
 if opt.citl:
     camera_prop = PhysicalProp(channel, laser_arduino=True, roi_res=(roi_res[1], roi_res[0]), slm_settle_time=0.12,
@@ -118,7 +134,7 @@ elif opt.prop_model.upper() == 'MODEL':
 # Select Phase generation method, algorithm
 if opt.method == 'SGD':
     phase_only_algorithm = SGD(prop_dist, wavelength, feature_size, opt.num_iters, roi_res, root_path,
-                               opt.prop_model, propagator, loss, opt.lr, opt.lr_s, s0, opt.citl, camera_prop, writer, device)
+                               opt.prop_model, propagator, loss, opt.lr, opt.lr_s, s0, opt.citl, camera_prop, writer, device, init_amp = input_amp)
 elif opt.method == 'GS':
     phase_only_algorithm = GS(prop_dist, wavelength, feature_size, opt.num_iters, root_path,
                               opt.prop_model, propagator, writer, device)

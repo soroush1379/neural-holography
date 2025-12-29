@@ -23,7 +23,7 @@ from propagation_ASM import *
 # 1. GS
 def gerchberg_saxton(init_phase, target_amp, num_iters, prop_dist, wavelength, feature_size=6.4e-6,
                      phase_path=None, prop_model='ASM', propagator=None,
-                     writer=None, dtype=torch.float32, precomputed_H_f=None, precomputed_H_b=None):
+                     writer=None, dtype=torch.float32, precomputed_H_f=None, precomputed_H_b=None, init_amp=None):
     """
     Given the initial guess, run the SGD algorithm to calculate the optimal phase pattern of spatial light modulator
 
@@ -45,9 +45,11 @@ def gerchberg_saxton(init_phase, target_amp, num_iters, prop_dist, wavelength, f
     ------
     :return: a tensor, the optimized phase pattern at the SLM plane, in the shape of (1,1,H,W)
     """
+    if init_amp is None:
+        init_amp = torch.ones_like(slm_phase)
 
     # initial guess; random phase
-    real, imag = utils.polar_to_rect(torch.ones_like(init_phase), init_phase)
+    real, imag = utils.polar_to_rect(init_amp, init_phase)
     slm_field = torch.complex(real, imag)
 
     # run the GS algorithm
@@ -69,7 +71,7 @@ def gerchberg_saxton(init_phase, target_amp, num_iters, prop_dist, wavelength, f
                                           prop_model, dtype, precomputed_H_b)
 
         # amplitude constraint at the SLM plane
-        slm_field = utils.replace_amplitude(slm_field, torch.ones_like(target_amp))
+        slm_field = utils.replace_amplitude(slm_field, init_amp)
 
     # return phases
     return slm_field.angle()
@@ -79,7 +81,7 @@ def gerchberg_saxton(init_phase, target_amp, num_iters, prop_dist, wavelength, f
 def stochastic_gradient_descent(init_phase, target_amp, num_iters, prop_dist, wavelength, feature_size,
                                 roi_res=None, phase_path=None, prop_model='ASM', propagator=None,
                                 loss=nn.MSELoss(), lr=0.01, lr_s=0.003, s0=1.0, citl=False, camera_prop=None,
-                                writer=None, dtype=torch.float32, precomputed_H=None):
+                                writer=None, dtype=torch.float32, precomputed_H=None, init_amp=None):
 
     """
     Given the initial guess, run the SGD algorithm to calculate the optimal phase pattern of spatial light modulator.
@@ -124,12 +126,16 @@ def stochastic_gradient_descent(init_phase, target_amp, num_iters, prop_dist, wa
     # crop target roi
     target_amp = utils.crop_image(target_amp, roi_res, stacked_complex=False)
 
+    # init amp
+    if init_amp is None:
+        init_amp = torch.ones_like(slm_phase)
+
     # run the iterative algorithm
     for k in range(num_iters):
         print(k)
         optimizer.zero_grad()
         # forward propagation from the SLM plane to the target plane
-        real, imag = utils.polar_to_rect(torch.ones_like(slm_phase), slm_phase)
+        real, imag = utils.polar_to_rect(init_amp, slm_phase)
         slm_field = torch.complex(real, imag)
 
         recon_field = utils.propagate_field(slm_field, propagator, prop_dist, wavelength, feature_size,

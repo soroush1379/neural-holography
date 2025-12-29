@@ -129,7 +129,7 @@ class SGD(nn.Module):
     """
     def __init__(self, prop_dist, wavelength, feature_size, num_iters, roi_res, phase_path=None, prop_model='ASM',
                  propagator=None, loss=nn.MSELoss(), lr=0.01, lr_s=0.003, s0=1.0, citl=False, camera_prop=None,
-                 writer=None, device=torch.device('cuda')):
+                 writer=None, device=torch.device('cuda'), init_amp=None):
         super(SGD, self).__init__()
 
         # Setting parameters
@@ -154,6 +154,8 @@ class SGD(nn.Module):
         self.dev = device
         self.loss = loss.to(device)
 
+        self.init_amp = init_amp
+
     def forward(self, target_amp, init_phase=None):
         # Pre-compute propagataion kernel only once
         if self.precomputed_H is None and self.prop_model == 'ASM':
@@ -170,7 +172,8 @@ class SGD(nn.Module):
                                                   loss=self.loss, lr=self.lr, lr_s=self.lr_s, s0=self.init_scale,
                                                   citl=self.citl, camera_prop=self.camera_prop,
                                                   writer=self.writer,
-                                                  precomputed_H=self.precomputed_H)
+                                                  precomputed_H=self.precomputed_H,
+                                                  init_amp=self.init_amp)
         return final_phase
 
     @property
