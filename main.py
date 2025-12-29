@@ -40,7 +40,7 @@ from propagation_ASM import propagation_ASM
 p = configargparse.ArgumentParser()
 p.add('-c', '--config_filepath', required=False, is_config_file=True, help='Path to config file.')
 
-p.add_argument('--channel', type=int, default=1, help='Red:0, green:1, blue:2')
+p.add_argument('--channel', type=int, default=0, help='Red:0, green:1, blue:2')
 p.add_argument('--method', type=str, default='SGD', help='Type of algorithm, GS/SGD/DPAC/HOLONET/UNET')
 p.add_argument('--prop_model', type=str, default='ASM', help='Type of propagation model, ASM or model')
 p.add_argument('--root_path', type=str, default='./phases', help='Directory where optimized phases will be saved.')
@@ -70,12 +70,12 @@ if opt.citl:
 
 # Hyperparameters setting
 cm, mm, um, nm = 1e-2, 1e-3, 1e-6, 1e-9
-prop_dist = (20 * cm, 20 * cm, 20 * cm)[channel]  # propagation distance from SLM plane to target plane
-wavelength = (638 * nm, 520 * nm, 450 * nm)[channel]  # wavelength of each color
-feature_size = (6.4 * um, 6.4 * um)  # SLM pitch
-slm_res = (1080, 1920)  # resolution of SLM
-image_res = (1080, 1920)
-roi_res = (880, 1600)  # regions of interest (to penalize for SGD)
+prop_dist = (13.90 * cm, 20 * cm, 20 * cm)[channel]  # propagation distance from SLM plane to target plane
+wavelength = (815 * nm, 520 * nm, 450 * nm)[channel]  # wavelength of each color
+feature_size = (9.2 * um, 9.2 * um)  # SLM pitch
+slm_res = (1152, 1920)  # resolution of SLM
+image_res = (1152, 1920)
+roi_res = (700, 1400)  # regions of interest (to penalize for SGD)
 dtype = torch.float32  # default datatype (Note: the result may be slightly different if you use float64, etc.)
 device = torch.device('cuda')  # The gpu you are using
 
@@ -171,7 +171,7 @@ for k, target in enumerate(image_loader):
     print(final_phase.shape)
 
     # save the final result somewhere.
-    phase_out_8bit = utils.phasemap_8bit(final_phase.cpu().detach(), inverted=True)
+    phase_out_8bit = utils.phasemap_8bit(final_phase.cpu().detach(), inverted=False)
 
     utils.cond_mkdir(root_path)
     cv2.imwrite(os.path.join(root_path, f'{target_idx}.png'), phase_out_8bit)
