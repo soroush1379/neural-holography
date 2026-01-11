@@ -71,12 +71,23 @@ if opt.citl:
 
 # Hyperparameters setting
 cm, mm, um, nm = 1e-2, 1e-3, 1e-6, 1e-9
-prop_dist = (13.90 * cm, 20 * cm, 20 * cm)[channel]  # propagation distance from SLM plane to target plane
+
+flag_test_fs = False
+
+if not flag_test_fs:
+    feature_size = (9.2 * um, 9.2 * um)  # SLM pitch
+    slm_res = (1152, 1920)  # resolution of SLM
+    image_res = (1152, 1920)
+    roi_res = (700, 1400)  # regions of interest (to penalize for SGD)
+else:
+    factor = 9.2 / 6.4
+    feature_size = (6.4 * um, 6.4 * um)  # SLM pitch
+    slm_res = (int(1152*factor), int(1920*factor))  # resolution of SLM
+    image_res = (int(1152*factor), int(1920*factor))
+    roi_res = (int(700*factor), int(1400*factor))  # regions of interest (to penalize for SGD)
+    
 wavelength = (815 * nm, 520 * nm, 450 * nm)[channel]  # wavelength of each color
-feature_size = (9.2 * um, 9.2 * um)  # SLM pitch
-slm_res = (1152, 1920)  # resolution of SLM
-image_res = (1152, 1920)
-roi_res = (700, 1400)  # regions of interest (to penalize for SGD)
+prop_dist = (13.90 * cm, 20 * cm, 20 * cm)[channel]  # propagation distance from SLM plane to target plane
 dtype = torch.float32  # default datatype (Note: the result may be slightly different if you use float64, etc.)
 device = torch.device('cuda')  # The gpu you are using
 
@@ -104,7 +115,7 @@ FY = torch.linspace(-Ly/2, Ly/2, Ny)
 
 X, Y = torch.meshgrid(FX, FY, indexing = "xy")
 r2 = X**2 + Y**2
-input_amp = torch.exp(-r2 / (beam_diameter/2)**2).float().to('cuda')
+input_amp = torch.exp(-r2 / (beam_diameter/2)**2).float().to(device)
 
 # Hardware setup for CITL
 if opt.citl:
