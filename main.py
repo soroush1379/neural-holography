@@ -122,22 +122,23 @@ input_amp = torch.exp(-r2 / (beam_diameter/2)**2).float().to(device)
 # Hardware setup for CITL
 if opt.citl:
     from experiment.toolkits.configs import Addresses
-    camera_prop = PhysicalProp(channel, laser_arduino=True, roi_res=(roi_res[1], roi_res[0]), slm_settle_time=0.12,
-                               range_row=(220, 1000), range_col=(300, 1630),
-                               patterns_path=f'F:/citl/calibration',
-                               show_preview=True)
+    # camera_prop = PhysicalProp(channel, laser_arduino=True, roi_res=(roi_res[1], roi_res[0]), slm_settle_time=0.12,
+    #                            range_row=(220, 1000), range_col=(300, 1630),
+    #                            patterns_path=f'F:/citl/calibration',
+    #                            show_preview=True)
     camera_prop = UWatPhysicalProp(
         BaslerCameraProperties(
             index = 0,
             pixel_format = 12,
             exposure_time = 4000,
             gain = 0,
-            roi = (0, 100, 0, 100), # TODO (y0, x0, h0, w0)
-            flag_flip_x = True, # Flip the image along the x axis
+            roi = (568, 610, 1498, 1960), # TODO (y0, x0, h0, w0)
+            desired_size = roi_res,
+            flag_flip_x = False, # Flip the image along the x axis
             flag_flip_y = True # Flip the image along the y axis
         ),
         MeadowlarkSLMProperties(
-            board_id = 0,
+            board_id = 1,
             lut_address = Addresses.meadowlark_p1920_lut_813_traps,
         ),
         device

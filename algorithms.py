@@ -131,6 +131,15 @@ def stochastic_gradient_descent(init_phase, target_amp, num_iters, prop_dist, wa
         init_amp = torch.ones_like(slm_phase)
 
     # run the iterative algorithm
+    import os
+
+    address = "C:\\Users\\tqtraaqs\\Desktop\\tqtraaqs_git\\neural-holography\\phases\\frames\\"  # replace with your folder path
+
+    for filename in os.listdir(address):
+        file_path = os.path.join(address, filename)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
     for k in range(num_iters):
         print(k)
         optimizer.zero_grad()
@@ -150,6 +159,13 @@ def stochastic_gradient_descent(init_phase, target_amp, num_iters, prop_dist, wa
         # camera-in-the-loop technique
         if citl:
             captured_amp = camera_prop(slm_phase)
+            
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots(1, 1)
+            ax.imshow(captured_amp.detach().to("cpu").numpy()[0, 0, :, :], origin="lower", cmap="gray")
+            ax.set_aspect("auto")
+            plt.savefig(f'{address}\\{k}.png')
+            plt.close()
 
             # use the gradient of proxy, replacing the amplitudes
             # captured_amp is assumed that its size already matches that of recon_amp

@@ -1,4 +1,5 @@
 from utils.modules import PhysicalProp
+import torch.nn as nn
 from dataclasses import dataclass
 import numpy as np
 import utils.utils as utils
@@ -24,6 +25,7 @@ class BaslerCameraProperties:
     exposure_time: int
     gain: int
     roi: Tuple[int, int, int, int] # Y0, X0, Height, Width
+    desired_size: Tuple[int, int]
 
     flag_flip_x: bool = True # Flip the image along the x axis
     flag_flip_y: bool = True # Flip the image along the y axis
@@ -44,6 +46,7 @@ class UWatPhysicalProp(PhysicalProp):
                  camera_properties: BaslerCameraProperties, 
                  slm_properties: MeadowlarkSLMProperties, 
                  device: str):
+        torch.nn.Module.__init__(self)
         self._setup_slm(slm_properties)
         self._setup_camera(camera_properties)
         self.device = device
@@ -52,30 +55,34 @@ class UWatPhysicalProp(PhysicalProp):
         """
         this forward pass gets slm_phase to display and returns the amplitude image at the target plane.
 
-        :param slm_phase: A pytorch tensor of shape (1, 1, H, W)
+        :param slm_phase: A pytorch tensor of shape (1, 1, H, W), 0-2pi
         :param num_grab_images:
         :return: A pytorch tensor shape of (1, 1, H, W)
         """
         # Upload the phase
-        slm_phase_np = slm_phase.squeeze(0).squeeze(0).to("cpu").numpy().astype(np.uint8)
-        self.slm.upload_phase_image(slm_phase_np)
+        slm_phase_8bit = utils.phasemap_8bit(slm_phase, True)
+        self.slm.upload_phase_image(slm_phase_8bit)
 
         # Acquire image and crop
         y0, x0, h, w = self.camera_properties.roi
-        image_np = self.camera.get_one_result().astype(int)
+        image_np = self.camera.get_one_result().Array / (2**self.camera_properties.pixel_format)
         if self.camera_properties.flag_flip_x:
             image_np = image_np[:, ::-1]
         if self.camera_properties.flag_flip_y:
             image_np = image_np[::-1, :]
-        image_np_cropped = image_np[y0:y0+h, x0:x0+h]
+        image_np_cropped = image_np[y0:y0+h, x0:x0+w]
 
         # Interpolate image
         N, M = image_np_cropped.shape # Image size
-        H, W = slm_phase.shape[2], slm_phase.shape[3] # Desired size (phase size)
+        H, W = self.camera_properties.desired_size # Desired size (phase size)
         image_np_interpolated = zoom(image_np_cropped, (H / N, W / M), order=3)
+        image_np_interpolated = np.maximum(0, image_np_interpolated)
 
         # Transfer to torch tensor
-        image_interpolated = torch.tensor(image_np_interpolated).to(self.device)
+        image_interpolated = torch.tensor(image_np_interpolated, dtype=torch.float32).to(self.device).unsqueeze(0).unsqueeze(0)
+        
+        # Uniformize the intensity
+        image_interpolated /= image_interpolated.max()
 
         # Take square root of intensity and return
         return image_interpolated.sqrt()
