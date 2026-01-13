@@ -29,6 +29,7 @@ import torch.nn as nn
 import configargparse
 from torch.utils.tensorboard import SummaryWriter
 
+from utils.uwat_physical_prop import *
 import utils.utils as utils
 from utils.augmented_image_loader import ImageLoader
 from propagation_model import ModelPropagate
@@ -55,6 +56,7 @@ p.add_argument('--lr', type=float, default=8e-3, help='Learning rate for phase v
 p.add_argument('--lr_s', type=float, default=2e-3, help='Learning rate for learnable scale (for SGD)')
 p.add_argument('--num_iters', type=int, default=500, help='Number of iterations (GS, SGD)')
 p.add_argument('--input_beam_diameter_mm', type=float, default=9, help='Diameter of the input beam (mm)')
+p.add_argument('--scale', type=float, default=1, help='Scale used for the loss function: loss - || s * output - target ||^2')
 
 # parse arguments
 opt = p.parse_args()
@@ -93,7 +95,7 @@ device = torch.device('cuda')  # The gpu you are using
 
 # Options for the algorithm
 loss = nn.MSELoss().to(device)  # loss functions to use (try other loss functions!)
-s0 = 1.0  # initial scale
+s0 = opt.scale  # initial scale
 
 root_path = os.path.join(opt.root_path, run_id, chan_str)  # path for saving out optimized phases
 
@@ -119,10 +121,27 @@ input_amp = torch.exp(-r2 / (beam_diameter/2)**2).float().to(device)
 
 # Hardware setup for CITL
 if opt.citl:
+    from experiment.toolkits.configs import Addresses
     camera_prop = PhysicalProp(channel, laser_arduino=True, roi_res=(roi_res[1], roi_res[0]), slm_settle_time=0.12,
                                range_row=(220, 1000), range_col=(300, 1630),
                                patterns_path=f'F:/citl/calibration',
                                show_preview=True)
+    camera_prop = UWatPhysicalProp(
+        BaslerCameraProperties(
+            index = 0,
+            pixel_format = 12,
+            exposure_time = 4000,
+            gain = 0,
+            roi = (0, 100, 0, 100), # TODO (y0, x0, h0, w0)
+            flag_flip_x = True, # Flip the image along the x axis
+            flag_flip_y = True # Flip the image along the y axis
+        ),
+        MeadowlarkSLMProperties(
+            board_id = 0,
+            lut_address = Addresses.meadowlark_p1920_lut_813_traps,
+        ),
+        device
+    )
 else:
     camera_prop = None
 
