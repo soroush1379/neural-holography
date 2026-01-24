@@ -12,11 +12,11 @@ import skimage.io
 import utils.utils as utils
 import platform
 my_os = platform.system()
-if my_os == 'Windows':
-    from utils.arduino_laser_control_module import ArduinoLaserControl
-    from utils.camera_capture_module import CameraCapture
-    from utils.calibration_module import Calibration
-    from utils.slm_display_module import SLMDisplay
+# if my_os == 'Windows':
+#     from utils.arduino_laser_control_module import ArduinoLaserControl
+#     from utils.camera_capture_module import CameraCapture
+#     from utils.calibration_module import Calibration
+#     from utils.slm_display_module import SLMDisplay
 
 
 class GS(nn.Module):
@@ -381,7 +381,7 @@ class PhysicalProp(nn.Module):
         """
         this forward pass gets slm_phase to display and returns the amplitude image at the target plane.
 
-        :param slm_phase:
+        :param slm_phase: A pytorch tensor of shape (1, 1, H, W)
         :param num_grab_images:
         :return: A pytorch tensor shape of (1, 1, H, W)
         """
@@ -431,3 +431,5 @@ class PhysicalProp(nn.Module):
         self.slm.disconnect()
         if self.alc is not None:
             self.alc.turnOffAll()
+        
+        self.alc.disconnect()

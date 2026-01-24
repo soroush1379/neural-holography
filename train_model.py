@@ -275,4 +275,3 @@ for e in range(opt.num_epochs):
 # disconnect everything
 if camera_prop is not None:
     camera_prop.disconnect()
-    camera_prop.alc.disconnect()

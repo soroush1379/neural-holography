@@ -29,14 +29,18 @@ import torch.nn as nn
 import configargparse
 from torch.utils.tensorboard import SummaryWriter
 
+from utils.uwat_physical_prop import *
 import utils.utils as utils
 from utils.augmented_image_loader import ImageLoader
 from propagation_model import ModelPropagate
 from utils.modules import SGD, GS, DPAC, PhysicalProp
 from holonet import HoloNet, InitialPhaseUnet, FinalPhaseOnlyUnet, PhaseOnlyUnet
 from propagation_ASM import propagation_ASM
-
+from PIL import Image
+import os
 # Command line argument processing
+os.chdir(r'C:\Users\tqtraaqs\Desktop\tqtraaqs_git\neural-holography')
+
 p = configargparse.ArgumentParser()
 p.add('-c', '--config_filepath', required=False, is_config_file=True, help='Path to config file.')
 
@@ -55,6 +59,7 @@ p.add_argument('--lr', type=float, default=8e-3, help='Learning rate for phase v
 p.add_argument('--lr_s', type=float, default=2e-3, help='Learning rate for learnable scale (for SGD)')
 p.add_argument('--num_iters', type=int, default=500, help='Number of iterations (GS, SGD)')
 p.add_argument('--input_beam_diameter_mm', type=float, default=9, help='Diameter of the input beam (mm)')
+p.add_argument('--scale', type=float, default=1, help='Scale used for the loss function: loss - || s * output - target ||^2')
 
 # parse arguments
 opt = p.parse_args()
@@ -78,7 +83,10 @@ if not flag_test_fs:
     feature_size = (9.2 * um, 9.2 * um)  # SLM pitch
     slm_res = (1152, 1920)  # resolution of SLM
     image_res = (1152, 1920)
-    roi_res = (700, 1400)  # regions of interest (to penalize for SGD)
+    # roi_res = (700, 1400)  # regions of interest (to penalize for SGD)
+    # roi_res = (350, 700)  # regions of interest (to penalize for SGD)
+    # roi_res = (700, 1000)  # regions of interest (to penalize for SGD)
+    roi_res = (600, 600)  # regions of interest (to penalize for SGD)
 else:
     factor = 9.2 / 6.4
     feature_size = (6.4 * um, 6.4 * um)  # SLM pitch
@@ -93,7 +101,7 @@ device = torch.device('cuda')  # The gpu you are using
 
 # Options for the algorithm
 loss = nn.MSELoss().to(device)  # loss functions to use (try other loss functions!)
-s0 = 1.0  # initial scale
+s0 = opt.scale  # initial scale
 
 root_path = os.path.join(opt.root_path, run_id, chan_str)  # path for saving out optimized phases
 
@@ -119,10 +127,40 @@ input_amp = torch.exp(-r2 / (beam_diameter/2)**2).float().to(device)
 
 # Hardware setup for CITL
 if opt.citl:
-    camera_prop = PhysicalProp(channel, laser_arduino=True, roi_res=(roi_res[1], roi_res[0]), slm_settle_time=0.12,
-                               range_row=(220, 1000), range_col=(300, 1630),
-                               patterns_path=f'F:/citl/calibration',
-                               show_preview=True)
+    from experiment.toolkits.configs import Addresses
+    # camera_prop = PhysicalProp(channel, laser_arduino=True, roi_res=(roi_res[1], roi_res[0]), slm_settle_time=0.12,
+    #                            range_row=(220, 1000), range_col=(300, 1630),
+    #                            patterns_path=f'F:/citl/calibration',
+    #                            show_preview=True)
+    rx, ry = 2.007142857142857, 2.0828571428571427
+    xc, yc = 1600, 1237
+    w = np.round(rx * roi_res[1]).astype(int)
+    h = np.round(ry * roi_res[0]).astype(int)
+
+    y0 = yc - h//2
+    x0 = xc - w//2
+
+    cam_roi = (y0, x0, h, w)
+    camera_prop = UWatPhysicalProp(
+        BaslerCameraProperties(
+            index = 0,
+            pixel_format = 12,
+            exposure_time = 4000,
+            gain = 0,
+            roi = cam_roi, # (y0, x0, h0, w0)
+            desired_size = roi_res,
+            flag_flip_x = False, # Flip the image along the x axis
+            flag_flip_y = True, # Flip the image along the y axis
+            flag_flip_x_result = False, # Flip the resulting cropped image along the x axis
+            flag_flip_y_result = True, # Flip the resulting cropped image along the y axis
+            image_count = 5, # The number of images to take and average over
+        ),
+        MeadowlarkSLMProperties(
+            board_id = 1,
+            lut_address = Addresses.meadowlark_p1920_lut_813_traps,
+        ),
+        device
+    )
 else:
     camera_prop = None
 
@@ -176,6 +214,7 @@ image_loader = ImageLoader(opt.data_path, channel=channel,
 # Loop over the dataset
 for k, target in enumerate(image_loader):
     # get target image
+  
     target_amp, target_res, target_filename = target
     target_path, target_filename = os.path.split(target_filename[0])
     target_idx = target_filename.split('_')[-1]
@@ -192,7 +231,10 @@ for k, target in enumerate(image_loader):
         _, final_phase = phase_only_algorithm(target_amp)
     else:
         # iterative methods, initial phase: random guess
-        init_phase = (-0.5 + 1.0 * torch.rand(1, 1, *slm_res)).to(device)
+        # init_phase = (-0.5 + 1.0 * torch.rand(1, 1, *slm_res)).to(device)
+      
+        init_phase = torch.from_numpy(np.array(Image.open(r"C:\Users\tqtraaqs\Desktop\tqtraaqs_git\neural-holography\phases\_SGD_ASM\red\flower.png"))).to(device).unsqueeze(0).unsqueeze(0)
+        init_phase = 2 * torch.pi * init_phase/255
         final_phase = phase_only_algorithm(target_amp, init_phase)
 
     print(final_phase.shape)
