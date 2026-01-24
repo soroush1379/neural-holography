@@ -1,18 +1,18 @@
-Started at 18:11:1 on 1/24/2026
+Started at 18:27:55 on 1/24/2026
  Hardware counter period is 0.100 us.
  Hi_timer minimum timer interval is 0.000 to 0.100 us.
- Minimum forced delay is around 0.100 us.
+ Minimum forced delay is around 0.200 us.
 Setting logging interval units to [us].
-     37728: Number of platforms detected: 1
+     38613: Number of platforms detected: 1
 Platform vendor: NVIDIA Corporation
 Platform   name: NVIDIA CUDA
 Platformversion: OpenCL 3.0 CUDA 12.6.65
 
          3: Get_cl_platforms 1(0x 0000 0001)
-         3: devices.size() 1(0x 0000 0000 0000 0001)
+         4: devices.size() 1(0x 0000 0000 0000 0001)
          0: Found GPU on platform index 0(0x 0000 0000 0000 0000)
          0: One Device Found?  1(0x 0000 0001)
-     79470: Make_cl_context_queue_program  1(0x 0000 0001)
+     67775: Make_cl_context_queue_program  1(0x 0000 0001)
          3: // These macros may be defined in the Python or C++ code that builds these
 // kernels:
 // SPECIFY_LOCAL_WORKGROUP_SIZE - either defined or not, decides whether the
@@ -65,13 +65,13 @@ void RegionalLUT(const float Scale,
 
          0: Decrypted kernel  1(0x 0000 0001)
          2: Entering Build program  1(0x 0000 0001)
-      4822: Build program Complete 1(0x 0000 0001)
+      4739: Build program Complete 1(0x 0000 0001)
          0: Make_cl_context_queue_program  1(0x 0000 0001)
-         8: Init buffers  1(0x 0000 0001)
-        26: Init cl kernel  1(0x 0000 0001)
-      1126: End Cleanup_cl
+        10: Init buffers  1(0x 0000 0001)
+        37: Init cl kernel  1(0x 0000 0001)
+       895: End Cleanup_cl
          0: platforms empty
-     21268: Number of platforms detected: 1
+     20855: Number of platforms detected: 1
 Platform vendor: NVIDIA Corporation
 Platform   name: NVIDIA CUDA
 Platformversion: OpenCL 3.0 CUDA 12.6.65
@@ -80,7 +80,7 @@ Platformversion: OpenCL 3.0 CUDA 12.6.65
          2: devices.size() 1(0x 0000 0000 0000 0001)
          0: Found GPU on platform index 0(0x 0000 0000 0000 0000)
          0: One Device Found?  1(0x 0000 0001)
-     55350: Make_cl_context_queue_program  1(0x 0000 0001)
+     51764: Make_cl_context_queue_program  1(0x 0000 0001)
          1: // These macros may be defined in the Python or C++ code that builds these
 // kernels:
 // SPECIFY_LOCAL_WORKGROUP_SIZE - either defined or not, decides whether the
@@ -133,7 +133,8 @@ void RegionalLUT(const float Scale,
 
          1: Decrypted kernel  1(0x 0000 0001)
          2: Entering Build program  1(0x 0000 0001)
-      2951: Build program Complete 1(0x 0000 0001)
+      2978: Build program Complete 1(0x 0000 0001)
          0: Make_cl_context_queue_program  1(0x 0000 0001)
-         5: Init buffers  1(0x 0000 0001)
-        19: Init cl kernel  1(0x 0000 0001)
+         6: Init buffers  1(0x 0000 0001)
+        21: Init cl kernel  1(0x 0000 0001)
+Stopped at 18:32:33 on 1/24/2026

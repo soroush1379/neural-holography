@@ -233,7 +233,7 @@ for k, target in enumerate(image_loader):
         # iterative methods, initial phase: random guess
         # init_phase = (-0.5 + 1.0 * torch.rand(1, 1, *slm_res)).to(device)
       
-        init_phase = torch.from_numpy(np.array(Image.open(r"C:\Users\tqtraaqs\Desktop\tqtraaqs_git\neural-holography\phases\_SGD_ASM\red\flower.png"))).to(device).unsqueeze(0).unsqueeze(0)
+        init_phase = torch.from_numpy(np.array(Image.open(r"C:\Users\tqtraaqs\Desktop\tqtraaqs_git\neural-holography\phases\_SGD_ASM\red\girl.png"))).to(device).unsqueeze(0).unsqueeze(0)
         init_phase = 2 * torch.pi * init_phase/255
         final_phase = phase_only_algorithm(target_amp, init_phase)
 
