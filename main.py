@@ -36,8 +36,11 @@ from propagation_model import ModelPropagate
 from utils.modules import SGD, GS, DPAC, PhysicalProp
 from holonet import HoloNet, InitialPhaseUnet, FinalPhaseOnlyUnet, PhaseOnlyUnet
 from propagation_ASM import propagation_ASM
-
+from PIL import Image
+import os
 # Command line argument processing
+os.chdir(r'C:\Users\tqtraaqs\Desktop\tqtraaqs_git\neural-holography')
+
 p = configargparse.ArgumentParser()
 p.add('-c', '--config_filepath', required=False, is_config_file=True, help='Path to config file.')
 
@@ -80,7 +83,10 @@ if not flag_test_fs:
     feature_size = (9.2 * um, 9.2 * um)  # SLM pitch
     slm_res = (1152, 1920)  # resolution of SLM
     image_res = (1152, 1920)
-    roi_res = (700, 1400)  # regions of interest (to penalize for SGD)
+    # roi_res = (700, 1400)  # regions of interest (to penalize for SGD)
+    # roi_res = (350, 700)  # regions of interest (to penalize for SGD)
+    # roi_res = (700, 1000)  # regions of interest (to penalize for SGD)
+    roi_res = (600, 600)  # regions of interest (to penalize for SGD)
 else:
     factor = 9.2 / 6.4
     feature_size = (6.4 * um, 6.4 * um)  # SLM pitch
@@ -126,16 +132,28 @@ if opt.citl:
     #                            range_row=(220, 1000), range_col=(300, 1630),
     #                            patterns_path=f'F:/citl/calibration',
     #                            show_preview=True)
+    rx, ry = 2.007142857142857, 2.0828571428571427
+    xc, yc = 1600, 1237
+    w = np.round(rx * roi_res[1]).astype(int)
+    h = np.round(ry * roi_res[0]).astype(int)
+
+    y0 = yc - h//2
+    x0 = xc - w//2
+
+    cam_roi = (y0, x0, h, w)
     camera_prop = UWatPhysicalProp(
         BaslerCameraProperties(
             index = 0,
             pixel_format = 12,
             exposure_time = 4000,
             gain = 0,
-            roi = (568, 610, 1498, 1960), # TODO (y0, x0, h0, w0)
+            roi = cam_roi, # (y0, x0, h0, w0)
             desired_size = roi_res,
             flag_flip_x = False, # Flip the image along the x axis
-            flag_flip_y = True # Flip the image along the y axis
+            flag_flip_y = True, # Flip the image along the y axis
+            flag_flip_x_result = False, # Flip the resulting cropped image along the x axis
+            flag_flip_y_result = True, # Flip the resulting cropped image along the y axis
+            image_count = 5, # The number of images to take and average over
         ),
         MeadowlarkSLMProperties(
             board_id = 1,
@@ -196,6 +214,7 @@ image_loader = ImageLoader(opt.data_path, channel=channel,
 # Loop over the dataset
 for k, target in enumerate(image_loader):
     # get target image
+  
     target_amp, target_res, target_filename = target
     target_path, target_filename = os.path.split(target_filename[0])
     target_idx = target_filename.split('_')[-1]
@@ -212,7 +231,10 @@ for k, target in enumerate(image_loader):
         _, final_phase = phase_only_algorithm(target_amp)
     else:
         # iterative methods, initial phase: random guess
-        init_phase = (-0.5 + 1.0 * torch.rand(1, 1, *slm_res)).to(device)
+        # init_phase = (-0.5 + 1.0 * torch.rand(1, 1, *slm_res)).to(device)
+      
+        init_phase = torch.from_numpy(np.array(Image.open(r"C:\Users\tqtraaqs\Desktop\tqtraaqs_git\neural-holography\phases\_SGD_ASM\red\flower.png"))).to(device).unsqueeze(0).unsqueeze(0)
+        init_phase = 2 * torch.pi * init_phase/255
         final_phase = phase_only_algorithm(target_amp, init_phase)
 
     print(final_phase.shape)

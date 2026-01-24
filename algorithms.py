@@ -140,6 +140,12 @@ def stochastic_gradient_descent(init_phase, target_amp, num_iters, prop_dist, wa
         if os.path.isfile(file_path):
             os.remove(file_path)
 
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(1, 1)
+    ax.imshow((target_amp**2).detach().to("cpu").numpy()[0, 0, :, :], cmap="gray", vmin=0, vmax=1.0)
+    ax.set_aspect("auto")
+    plt.savefig(f'{address}\\target.png')
+    plt.close()
     for k in range(num_iters):
         print(k)
         optimizer.zero_grad()
@@ -162,7 +168,8 @@ def stochastic_gradient_descent(init_phase, target_amp, num_iters, prop_dist, wa
             
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(1, 1)
-            ax.imshow(captured_amp.detach().to("cpu").numpy()[0, 0, :, :], origin="lower", cmap="gray")
+            s = target_amp.sum() / captured_amp.sum()
+            ax.imshow((captured_amp**2 * s**2).detach().to("cpu").numpy()[0, 0, :, :], cmap="gray", vmin=0, vmax=1.0)
             ax.set_aspect("auto")
             plt.savefig(f'{address}\\{k}.png')
             plt.close()
@@ -175,6 +182,7 @@ def stochastic_gradient_descent(init_phase, target_amp, num_iters, prop_dist, wa
 
         # calculate loss and backprop
         lossValue = loss(s * out_amp, target_amp)
+        print('loss is ', lossValue, '\n')
         lossValue.backward()
         optimizer.step()
 

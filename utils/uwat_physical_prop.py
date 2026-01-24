@@ -27,8 +27,12 @@ class BaslerCameraProperties:
     roi: Tuple[int, int, int, int] # Y0, X0, Height, Width
     desired_size: Tuple[int, int]
 
-    flag_flip_x: bool = True # Flip the image along the x axis
-    flag_flip_y: bool = True # Flip the image along the y axis
+    flag_flip_x: bool = False # Flip the image along the x axis
+    flag_flip_y: bool = False # Flip the image along the y axis
+    flag_flip_x_result: bool = False # Flip the image along the x axis
+    flag_flip_y_result: bool = False # Flip the image along the y axis
+
+    image_count: int = 1
 
 @dataclass
 class MeadowlarkSLMProperties:
@@ -60,17 +64,24 @@ class UWatPhysicalProp(PhysicalProp):
         :return: A pytorch tensor shape of (1, 1, H, W)
         """
         # Upload the phase
-        slm_phase_8bit = utils.phasemap_8bit(slm_phase, True)
+        slm_phase_8bit = utils.phasemap_8bit(slm_phase, False)
         self.slm.upload_phase_image(slm_phase_8bit)
 
         # Acquire image and crop
         y0, x0, h, w = self.camera_properties.roi
-        image_np = self.camera.get_one_result().Array / (2**self.camera_properties.pixel_format)
+        for i in range(self.camera_properties.image_count):
+            if i == 0:
+                image_np = self.camera.get_one_result().Array / (2**self.camera_properties.pixel_format) / self.camera_properties.image_count
+            else:
+                image_np += self.camera.get_one_result().Array / (2**self.camera_properties.pixel_format) / self.camera_properties.image_count
+                
         if self.camera_properties.flag_flip_x:
             image_np = image_np[:, ::-1]
         if self.camera_properties.flag_flip_y:
             image_np = image_np[::-1, :]
         image_np_cropped = image_np[y0:y0+h, x0:x0+w]
+
+        print("Max pixel:", image_np_cropped.max())
 
         # Interpolate image
         N, M = image_np_cropped.shape # Image size
@@ -78,11 +89,17 @@ class UWatPhysicalProp(PhysicalProp):
         image_np_interpolated = zoom(image_np_cropped, (H / N, W / M), order=3)
         image_np_interpolated = np.maximum(0, image_np_interpolated)
 
+        # Result flipping
+        if self.camera_properties.flag_flip_y_result:
+            image_np_interpolated = image_np_interpolated[::-1, :].copy()
+        if self.camera_properties.flag_flip_x_result:
+            image_np_interpolated = image_np_interpolated[:, ::-1].copy()
+
         # Transfer to torch tensor
         image_interpolated = torch.tensor(image_np_interpolated, dtype=torch.float32).to(self.device).unsqueeze(0).unsqueeze(0)
         
         # Uniformize the intensity
-        image_interpolated /= image_interpolated.max()
+        # image_interpolated /= image_interpolated.max()
 
         # Take square root of intensity and return
         return image_interpolated.sqrt()
